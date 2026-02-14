@@ -1,0 +1,43 @@
+# =====================
+# Secrets / Credentials
+# =====================
+config.py
+credentials.json
+token.json
+
+# サンプルは管理する
+!config.sample.py
+
+# =====================
+# Build artifacts
+# =====================
+build/
+dist/
+*.spec
+
+# =====================
+# Python
+# =====================
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# =====================
+# Selenium / Chrome
+# =====================
+chromedriver.exe
+selenium_profile/
+
+# =====================
+# Logs / Data
+# =====================
+orders_schedule.csv
+
+# =====================
+# OS / Editor
+# =====================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
