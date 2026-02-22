@@ -14,9 +14,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 import config
 
-
 # =========================
-# Chromeプロファイル保存（PC固定）
+# Chrome設定
 # =========================
 USER_HOME = os.path.expanduser("~")
 CHROME_PROFILE_DIR = os.path.join(USER_HOME, "eo_selenium_profile")
@@ -25,8 +24,6 @@ os.makedirs(CHROME_PROFILE_DIR, exist_ok=True)
 options = Options()
 options.add_argument("--window-size=1200,900")
 options.add_argument(f"--user-data-dir={CHROME_PROFILE_DIR}")
-
-# ★ Selenium検出対策
 options.add_argument("--disable-blink-features=AutomationControlled")
 options.add_experimental_option("excludeSwitches", ["enable-automation"])
 options.add_experimental_option("useAutomationExtension", False)
@@ -36,7 +33,6 @@ driver = webdriver.Chrome(
     options=options,
 )
 
-# ★ webdriver検出無効化
 driver.execute_script(
     "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
 )
@@ -48,32 +44,20 @@ wait = WebDriverWait(driver, 20)
 # ログイン
 # =========================
 def login():
-    print("[1] ログインページへ")
     driver.get(config.LOGIN_URL)
-    time.sleep(2)
-
-    if "menu/menu.asp" in driver.current_url:
-        print("[OK] 既にログイン済み")
-        return
-
-    print("👉 初回のみ手動ログインしてください")
-    wait.until(EC.url_contains("menu/menu.asp"))
-    print("[OK] ログイン成功")
+    time.sleep(5)
 
 
 # =========================
-# 受注済一覧へ
+# 一覧へ
 # =========================
 def go_to_myorder_list():
-    print("[2] 受注済一覧へ移動")
     driver.get(config.MYORDER_LIST_URL)
-
     wait.until(EC.presence_of_element_located((By.XPATH, "//input[@value='詳細']")))
-    print("[OK] 受注済一覧表示")
 
 
 # =========================
-# 詳細ページ解析
+# 詳細解析
 # =========================
 def parse_detail_page():
 
@@ -89,7 +73,6 @@ def parse_detail_page():
 
     visit_date_raw = get_value("訪問予定日")
     if not visit_date_raw:
-        print("⚠ 訪問予定日取得失敗")
         return None
 
     visit_date = visit_date_raw.split()[0]
@@ -127,18 +110,15 @@ def parse_detail_page():
 
 
 # =========================
-# 詳細取得
+# 取得
 # =========================
 def fetch_all_orders():
-    print("[3] 詳細を順番に取得")
-
     results = []
 
     buttons = driver.find_elements(By.XPATH, "//input[@value='詳細']")
     total = len(buttons)
 
     for i in range(total):
-        print(f"--- {i+1} 件目 ---")
 
         buttons = driver.find_elements(By.XPATH, "//input[@value='詳細']")
         onclick = buttons[i].get_attribute("onclick")
@@ -159,12 +139,12 @@ def fetch_all_orders():
 
 
 # =========================
-# CSV保存（Excel完全対応版）
+# CSV保存
 # =========================
 def save_to_csv(results):
+
     filename = "eo_myorder_list.csv"
 
-    # ★ Windows Excel完全互換
     with open(filename, "w", newline="", encoding="cp932") as f:
         writer = csv.writer(f)
 
@@ -197,7 +177,7 @@ def save_to_csv(results):
                 ]
             )
 
-    print(f"[OK] CSV出力完了 → {filename}")
+    return filename
 
 
 # =========================
@@ -211,20 +191,22 @@ def main():
         results = fetch_all_orders()
 
         if results:
-            save_to_csv(results)
+            csv_path = save_to_csv(results)
+
+            from calendar_importer import sync_orders_to_calendar
+
+            sync_orders_to_calendar(results)
+
+            # CSV削除
+            if os.path.exists(csv_path):
+                os.remove(csv_path)
+
         else:
-            print("取得データなし")
-
-        print("[OK] 全処理完了")
-
-    except Exception:
-        import traceback
-
-        print("❌ エラー発生")
-        traceback.print_exc()
+            print("データなし")
 
     finally:
-        time.sleep(3)
+        driver.get("about:blank")
+        time.sleep(2)
         driver.quit()
 
 
